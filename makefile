@@ -1,14 +1,18 @@
 CC = gcc
 FLAGS = -O3 -Wall -Wextra
+OBJS = test.o nn.o matrix.o
 LIBS = -lm
 
 all: test
 
-test.o: test.c ml.h
+test.o: test.c nn.h matrix.h
 	$(CC) $(FLAGS) -c $<
 
-ml.o: ml.c ml.h
+matrix.o: matrix.c matrix.h
 	$(CC) $(FLAGS) -c $<
 
-test: test.o ml.o
-	$(CC) test.o ml.o -o test $(LIBS)
+nn.o: nn.c nn.h matrix.h
+	$(CC) $(FLAGS) -c $<
+
+test: $(OBJS)
+	$(CC) $(OBJS) -o test $(LIBS)

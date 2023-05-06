@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "ml.h"
+#include "matrix.h"
 
 float sigmoidf(float x)
 {
@@ -12,14 +12,14 @@ Matrix create_matrix(size_t rows, size_t cols)
     m.rows = rows;
     m.cols = cols;
     m.stride = cols;
-    m.data = ML_MALLOC(sizeof(*m.data) * rows * cols);
+    m.data = malloc(sizeof(*m.data) * rows * cols);
     assert(m.data != NULL);
     return m;
 }
 
 void free_matrix(Matrix m)
 {
-    ML_FREE(m.data);
+    free(m.data);
 }
 
 float rand_float(void)
@@ -94,11 +94,13 @@ void matrix_sum(Matrix dst, Matrix a)
     }
 }
 
-void print_matrix(Matrix m, const char *name)
+void print_matrix(Matrix m, const char *name, size_t padding)
 {
+    printf("%*s", (int)padding, "");
     printf("%s = [\n", name);
     for (size_t i = 0; i < m.rows; ++i)
     {
+        printf("%*s", (int)padding, "");
         for (size_t j = 0; j < m.cols; ++j)
         {
             printf("  %f ", MATRIX_AT(m, i, j));
@@ -107,6 +109,7 @@ void print_matrix(Matrix m, const char *name)
         printf("\n");
     }
 
+    printf("%*s", (int)padding, "");
     printf("]\n");
 }
 
