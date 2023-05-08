@@ -21,9 +21,12 @@ void nn_print(NN nn, const char *name);
 void nn_free(NN nn);
 
 void nn_randomize(NN nn);
+void nn_zero(NN nn);
+
 void nn_forward(NN nn);
 float nn_cost(NN nn, Matrix ti, Matrix to);
 void nn_finite_diff(NN nn, NN g, float eps, Matrix ti, Matrix to);
+void nn_backprop(NN nn, NN g, Matrix ti, Matrix to);
 void nn_learn(NN n, NN g, float rate);
 
 #endif // _NN_H_

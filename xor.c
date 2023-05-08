@@ -25,47 +25,12 @@ Model xor_model = {
     .rows = 4,
 };
 
-Model adder_model = {
-    .input_cols = 4,
-    .output_cols = 2,
-    .stride = 6,
-    .training_data = {
-        0, 0,  0, 0,  0, 0,
-        0, 0,  0, 1,  0, 1,
-        0, 0,  1, 0,  1, 0,
-        0, 0,  1, 1,  1, 1,
-        0, 1,  0, 0,  0, 1,
-        0, 1,  0, 1,  1, 0,
-        0, 1,  1, 0,  1, 1,
-        0, 1,  1, 1,  0, 0,
-        1, 0,  0, 0,  1, 0,
-        1, 0,  0, 1,  1, 1,
-        1, 0,  1, 0,  0, 0,
-        1, 0,  1, 1,  0, 1,
-        1, 1,  0, 0,  1, 1,
-        1, 1,  0, 1,  0, 0,
-        1, 1,  1, 0,  0, 1,
-        1, 1,  1, 1,  1, 0,
-    },
-    .rows = 16,
-};
-
-/*
-float training_data[] = {
-    0, 0, 0, // input 1, intput 2, expected
-    0, 1, 1,
-    1, 0, 1,
-    1, 1, 0,
-};
-*/
 int main(void)
 {
     srand(time(NULL));
 
     Model model = xor_model;
-    // Model model = adder_model;
 
-    // size_t rows = sizeof(training_data) / sizeof(training_data[0]) / model.stride;
     Matrix ti = {
         .rows = model.rows,
         .cols = model.input_cols,
@@ -80,16 +45,12 @@ int main(void)
         .data = model.training_data + model.input_cols,
     };
 
-    // MATRIX_PRINT(to);
-
-    // return 0;
     size_t arch[] = {2, 2, 1};
     NN nn = nn_alloc(arch, ARRAY_LEN(arch));
     NN gradient = nn_alloc(arch, ARRAY_LEN(arch));
     nn_randomize(nn);
 
-    float eps = 1e-1;
-    float rate = 1e-1;
+    float rate = 1;
 
     float c = nn_cost(nn, ti, to);
     printf("Cost = %f\n", c);
@@ -97,10 +58,15 @@ int main(void)
     size_t it;
     for (it = 0; it < 100 * 1000; ++it)
     {
+#if 0
+        float eps = 1e-1;
         nn_finite_diff(nn, gradient, eps, ti, to);
+#else
+        nn_backprop(nn, gradient, ti, to);
+#endif
         nn_learn(nn, gradient, rate);
         c = nn_cost(nn, ti, to);
-        if (c < 0.001)
+        if (c < 0.0001)
         {
             break;
         }
@@ -111,27 +77,6 @@ int main(void)
     printf("---------------------------------------\n");
     printf("Cost = %f (after %zu iterations)\n", c, it);
     printf("---------------------------------------\n");
-
-    /*
-    for (int i = 0; i < 16; ++i)
-    {
-        size_t a1 = (i & 1) == 1 ? 1 : 0;
-        size_t a2 = (i & 2) == 2 ? 1 : 0;
-        size_t a3 = (i & 4) == 4 ? 1 : 0;
-        size_t a4 = (i & 8) == 8 ? 1 : 0;
-
-        MATRIX_AT(NN_INPUT(nn), 0, 0) = a1;
-        MATRIX_AT(NN_INPUT(nn), 0, 1) = a2;
-        MATRIX_AT(NN_INPUT(nn), 0, 2) = a3;
-        MATRIX_AT(NN_INPUT(nn), 0, 3) = a4;
-        nn_forward(nn);
-
-        float y1 = MATRIX_AT(NN_OUTPUT(nn), 0, 0);
-        float y2 = MATRIX_AT(NN_OUTPUT(nn), 0, 1);
-
-        printf("%zu %zu & %zu %zu = %f %f\n", a1, a2, a3, a4, y1, y2);
-    }
-    */
 
     for (size_t i = 0; i < 2; ++i)
     {

@@ -3,9 +3,12 @@ FLAGS = -O3 -Wall -Wextra
 OBJS = test.o nn.o matrix.o
 LIBS = -lm
 
-all: test
+all: xor adder
 
-test.o: test.c nn.h matrix.h
+xor.o: xor.c nn.h matrix.h
+	$(CC) $(FLAGS) -c $<
+
+adder.o: adder.c nn.h matrix.h
 	$(CC) $(FLAGS) -c $<
 
 matrix.o: matrix.c matrix.h
@@ -14,5 +17,8 @@ matrix.o: matrix.c matrix.h
 nn.o: nn.c nn.h matrix.h
 	$(CC) $(FLAGS) -c $<
 
-test: $(OBJS)
-	$(CC) $(OBJS) -o test $(LIBS)
+xor: $(OBJS)
+	$(CC) $(OBJS) -o xor $(LIBS)
+
+adder: $(OBJS)
+	$(CC) $(OBJS) -o adder $(LIBS)

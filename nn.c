@@ -70,6 +70,18 @@ void nn_randomize(NN nn)
     }
 }
 
+void nn_zero(NN nn)
+{
+    for (size_t i = 0; i < nn.count; ++i)
+    {
+        fill_matrix(nn.as[i], 0);
+        fill_matrix(nn.ws[i], 0);
+        fill_matrix(nn.bs[i], 0);
+    }
+    
+    fill_matrix(nn.as[nn.count], 0);
+}
+
 void nn_forward(NN nn)
 {
     for (size_t i = 0; i < nn.count; ++i)
@@ -104,6 +116,74 @@ float nn_cost(NN nn, Matrix ti, Matrix to)
     }
 
     return c / n;
+}
+
+void nn_backprop(NN nn, NN g, Matrix ti, Matrix to)
+{
+    assert(ti.rows == to.rows);
+    assert(NN_OUTPUT(nn).cols == to.cols);
+
+    nn_zero(g);
+
+    // i = current sample
+    // l = current layer
+    // j = curent activation 
+    // k = previous activation
+    size_t n = ti.rows;
+    for (size_t i = 0; i < n; ++i)  // for each sample in our input
+    {
+        matrix_copy(NN_INPUT(nn), matrix_row(ti, i)); // copy input row to input layer of network
+        nn_forward(nn);
+ 
+        for (size_t j = 0; j <= nn.count; ++j)
+        {
+            fill_matrix(g.as[j], 0);
+        }
+ 
+        for (size_t j = 0; j < to.cols; ++j)    // for each output column
+        {
+            MATRIX_AT(NN_OUTPUT(g), 0, j) = 
+                MATRIX_AT(NN_OUTPUT(nn), 0, j) - MATRIX_AT(to, i, j);    // assumes only 1 output node
+        }
+
+        for (size_t l = nn.count; l > 0; --l)  // for each layer
+        {
+            for (size_t j = 0; j < nn.as[l].cols; ++j)
+            {
+                float a = MATRIX_AT(nn.as[l], 0, j);    // activation 
+                float da = MATRIX_AT(g.as[l], 0, j);    // derivative of activation
+                MATRIX_AT(g.bs[l - 1], 0, j) += 2 * da * a * (1 - a);
+                for (size_t k = 0; k < nn.as[l - 1].cols; ++k)          // for each previous activation (to the right)
+                {
+                    // j - weight matrix cols
+                    // k - weight matrix row
+                    float pa = MATRIX_AT(nn.as[l - 1], 0, k);
+                    float w = MATRIX_AT(nn.ws[l - 1], k, j);
+                    MATRIX_AT(g.ws[l - 1], k, j) += 2 * da * a * (1 - a) * pa;
+                    MATRIX_AT(g.as[l - 1], 0, k) += 2 * da * a * (1 - a) * w;
+                }
+            }
+        }
+    }
+
+    for (size_t i = 0; i < g.count; ++i)
+    {
+        for (size_t j = 0; j < g.ws[i].rows; ++j)
+        {
+            for (size_t k = 0; k < g.ws[i].cols; ++k)
+            {
+                MATRIX_AT(g.ws[i], j, k) /= n;
+            }
+        }
+
+        for (size_t j = 0; j < g.bs[i].rows; ++j)
+        {
+            for (size_t k = 0; k < g.bs[i].cols; ++k)
+            {
+                MATRIX_AT(g.bs[i], j, k) /= n;
+            }
+        }
+    }
 }
 
 void nn_finite_diff(NN nn, NN g, float eps, Matrix ti, Matrix to)
