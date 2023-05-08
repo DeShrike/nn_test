@@ -3,176 +3,122 @@
 #include <time.h>
 #include "nn.h"
 
-typedef struct
-{
-    int rows;
-    int input_cols;
-    int output_cols;
-    int stride;
-    float training_data[100];
-} Model;
+#define BITS 4
 
-Model xor_model = {
-    .input_cols = 2,
-    .output_cols = 1,
-    .stride = 3,
-    .training_data = {
-        0, 0, 0, // input 1, intput 2, expected
-        0, 1, 1,
-        1, 0, 1,
-        1, 1, 0,
-    },
-    .rows = 4,
-};
-
-Model xor3_model = {
-    .input_cols = 3,
-    .output_cols = 1,
-    .stride = 4,
-    .training_data = {
-        0, 0, 0, 0, // input 1, intput 2, input 3, expected
-        0, 0, 1, 1,
-        0, 1, 0, 1,
-        0, 1, 1, 0,
-        1, 0, 0, 0,
-        1, 0, 1, 0,
-        1, 1, 0, 0,
-        1, 1, 1, 0,
-    },
-    .rows = 8,
-};
-
-Model adder_model = {
-    .input_cols = 4,
-    .output_cols = 2,
-    .stride = 6,
-    .training_data = {
-        0, 0,  0, 0,  0, 0,
-        0, 0,  0, 1,  0, 1,
-        0, 0,  1, 0,  1, 0,
-        0, 0,  1, 1,  1, 1,
-        0, 1,  0, 0,  0, 1,
-        0, 1,  0, 1,  1, 0,
-        0, 1,  1, 0,  1, 1,
-        0, 1,  1, 1,  0, 0,
-        1, 0,  0, 0,  1, 0,
-        1, 0,  0, 1,  1, 1,
-        1, 0,  1, 0,  0, 0,
-        1, 0,  1, 1,  0, 1,
-        1, 1,  0, 0,  1, 1,
-        1, 1,  0, 1,  0, 0,
-        1, 1,  1, 0,  0, 1,
-        1, 1,  1, 1,  1, 0,
-    },
-    .rows = 16,
-};
-
-/*
-float training_data[] = {
-    0, 0, 0, // input 1, intput 2, expected
-    0, 1, 1,
-    1, 0, 1,
-    1, 1, 0,
-};
-*/
-int main(void)
+int main()
 {
     srand(time(NULL));
 
-    // Model model = xor_model;
-    Model model = xor_model;
-    // Model model = adder_model;
+    size_t n = (1 << BITS);
+    size_t rows = n * n;
+    Matrix ti = create_matrix(rows, 2 * BITS);
+    Matrix to = create_matrix(rows, BITS + 1); // + carry bit
+    for (size_t i = 0; i < ti.rows; ++i)
+    {
+        size_t x = i / n;
+        size_t y = i % n;
+        size_t z = x + y;
+        size_t overflow = z >= n;
+        for (size_t j = 0; j < BITS; ++j)
+        {
+            MATRIX_AT(ti, i, j) = (x >> j) & 1;
+            MATRIX_AT(ti, i, j + BITS) = (y >> j) & 1;
+            if (overflow)
+            {
+                MATRIX_AT(to, i, j)        = 0;
+            }
+            else
+            {
+                MATRIX_AT(to, i, j) = (z >> j) & 1;
+            }
+        }
 
-    // size_t rows = sizeof(training_data) / sizeof(training_data[0]) / model.stride;
-    Matrix ti = {
-        .rows = model.rows,
-        .cols = model.input_cols,
-        .stride = model.stride,
-        .data = model.training_data,
-    };
-
-    Matrix to = {
-        .rows = model.rows,
-        .cols = model.output_cols,
-        .stride = model.stride,
-        .data = model.training_data + model.input_cols,
-    };
+        MATRIX_AT(to, i, BITS) = overflow;
+    }
 
     // MATRIX_PRINT(ti);
     // MATRIX_PRINT(to);
-    // return 0;
 
-    size_t arch[] = {2, 2, 1};
+    size_t arch[] = { 2 * BITS, BITS * 5, BITS + 1};
     NN nn = nn_alloc(arch, ARRAY_LEN(arch));
     NN gradient = nn_alloc(arch, ARRAY_LEN(arch));
     nn_randomize(nn);
 
     float rate = 1;
-    // float rate = 1e-1;
-
     float c = nn_cost(nn, ti, to);
     printf("Cost = %f\n", c);
 
-    size_t it;
-    for (it = 0; it < 100 * 1000; ++it)
+    for (size_t i = 0; i < 100 * 1000; ++i)
     {
-#if 0
-        float eps = 1e-1;
-        nn_finite_diff(nn, gradient, eps, ti, to);
-#else
         nn_backprop(nn, gradient, ti, to);
-#endif
         nn_learn(nn, gradient, rate);
-        c = nn_cost(nn, ti, to);
-        if (c < 0.0001)
+        if (i % 100 == 0)
         {
-            break;
+            c = nn_cost(nn, ti, to);
+            printf("%zu: Cost = %f\n", i, c);
+            if (c < 0.005)
+            {
+                break;
+            }
         }
     }
 
-    printf("---------------------------------------\n");
     NN_PRINT(nn);
-    printf("---------------------------------------\n");
-    printf("Cost = %f (after %zu iterations)\n", c, it);
-    printf("---------------------------------------\n");
 
-    /*
-    for (int i = 0; i < 16; ++i)
+    // Verify
+    int good_count = 0;
+    int bad_count = 0;
+    for (size_t x = 0; x < n; ++x)
     {
-        size_t a1 = (i & 1) == 1 ? 1 : 0;
-        size_t a2 = (i & 2) == 2 ? 1 : 0;
-        size_t a3 = (i & 4) == 4 ? 1 : 0;
-        size_t a4 = (i & 8) == 8 ? 1 : 0;
-
-        MATRIX_AT(NN_INPUT(nn), 0, 0) = a1;
-        MATRIX_AT(NN_INPUT(nn), 0, 1) = a2;
-        MATRIX_AT(NN_INPUT(nn), 0, 2) = a3;
-        MATRIX_AT(NN_INPUT(nn), 0, 3) = a4;
-        nn_forward(nn);
-
-        float y1 = MATRIX_AT(NN_OUTPUT(nn), 0, 0);
-        float y2 = MATRIX_AT(NN_OUTPUT(nn), 0, 1);
-
-        printf("%zu %zu & %zu %zu = %f %f\n", a1, a2, a3, a4, y1, y2);
-    }
-    */
-
-    for (size_t i = 0; i < 2; ++i)
-    {
-        for (size_t j = 0; j < 2; ++j)
+        for (size_t y = 0; y < n; ++y)
         {
-            MATRIX_AT(NN_INPUT(nn), 0, 0) = i;
-            MATRIX_AT(NN_INPUT(nn), 0, 1) = j;
+            for (size_t j = 0; j < BITS; ++j)
+            {
+                MATRIX_AT(NN_INPUT(nn), 0, j) = (x >> j) & 1;
+                MATRIX_AT(NN_INPUT(nn), 0, j + BITS) = (y >> j) & 1;
+            }
 
             nn_forward(nn);
-            float y = MATRIX_AT(NN_OUTPUT(nn), 0, 0);
 
-            printf("%zu ^ %zu = %f\n", i, j, y);
+            if (MATRIX_AT(NN_OUTPUT(nn), 0, BITS) > 0.5)
+            {
+                if (x + y >= n)
+                {
+                    good_count++;
+                }
+                else
+                {
+                    bad_count++;
+                    printf("%zu + %zu = " , x, y);
+                    printf("OVERFLOW\n");
+                }
+            }
+            else
+            {
+                size_t z = 0;
+                for (size_t j = 0; j < BITS; ++j)
+                {
+                    size_t bit = MATRIX_AT(NN_OUTPUT(nn), 0, j) > 0.5;
+                    z |= (bit << j);
+                }
+
+                if (x + y == z)
+                {
+                    good_count++;
+                }
+                else
+                {
+                    bad_count++;
+                    printf("%zu + %zu = " , x, y);
+                    printf("%zu\n", z);
+                }
+            }
         }
     }
+
+    printf("Correct: %d - Wrong: %d\n", good_count, bad_count);
 
     nn_free(gradient);
     nn_free(nn);
-
     return 0;
 }

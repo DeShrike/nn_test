@@ -1,6 +1,6 @@
 CC = gcc
 FLAGS = -O3 -Wall -Wextra
-OBJS = test.o nn.o matrix.o
+OBJS = nn.o matrix.o
 LIBS = -lm
 
 all: xor adder
@@ -17,8 +17,8 @@ matrix.o: matrix.c matrix.h
 nn.o: nn.c nn.h matrix.h
 	$(CC) $(FLAGS) -c $<
 
-xor: $(OBJS)
-	$(CC) $(OBJS) -o xor $(LIBS)
+xor: xor.o $(OBJS)
+	$(CC) xor.o $(OBJS) -o xor $(LIBS)
 
-adder: $(OBJS)
-	$(CC) $(OBJS) -o adder $(LIBS)
+adder: adder.o $(OBJS)
+	$(CC) adder.o $(OBJS) -o adder $(LIBS)
