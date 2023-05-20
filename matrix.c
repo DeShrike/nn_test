@@ -136,3 +136,22 @@ void matrix_copy(Matrix dst, Matrix src)
         }
     }
 }
+
+void matrix_shuffle_rows(Matrix m)
+{
+    // For stochastic-gradient descent
+    // Fisher-Yates shuffle
+    for (size_t i = 0; i < m.rows; ++i)
+    {
+        size_t j = i + rand() % (m.rows - i);
+        if (i != j)
+        {
+            for (size_t k = 0; j < m.cols; ++k)
+            {
+                float t = MATRIX_AT(m, i, k);
+                MATRIX_AT(m, i, k) = MATRIX_AT(m, j, k);
+                MATRIX_AT(m, j, k) = t;
+            }
+        }
+    }
+}

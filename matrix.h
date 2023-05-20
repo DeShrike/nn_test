@@ -32,5 +32,6 @@ void matrix_sum(Matrix dst, Matrix a);
 void print_matrix(Matrix m, const char *name, size_t padding);
 Matrix matrix_row(Matrix dst, size_t row);
 void matrix_copy(Matrix dst, Matrix src);
+void matrix_shuffle_rows(Matrix m);
 
 #endif // _MATRIX_H_

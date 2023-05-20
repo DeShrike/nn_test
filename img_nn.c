@@ -75,6 +75,8 @@ Image process_color(Image image)
         }
     }
 
+    matrix_shuffle_rows(t);
+
     Matrix ti = {
         .rows = t.rows,
         .cols = 2,
@@ -156,6 +158,8 @@ Image process_gray(Image image)
             MATRIX_AT(t, i, 2) = pixel / 255.f;
         }
     }
+
+    matrix_shuffle_rows(t);
 
     Matrix ti = {
         .rows = t.rows,
