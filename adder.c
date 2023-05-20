@@ -3,7 +3,7 @@
 #include <time.h>
 #include "nn.h"
 
-#define BITS 6
+#define BITS 4
 
 int main()
 {
@@ -42,7 +42,7 @@ int main()
     size_t arch[] = { 2 * BITS, BITS * 5, BITS + 1};
     NN nn = nn_alloc(arch, ARRAY_LEN(arch));
     NN gradient = nn_alloc(arch, ARRAY_LEN(arch));
-    nn_randomize(nn);
+    nn_randomize(nn, 0, 1);
 
     float rate = 1;
     float c = nn_cost(nn, ti, to);

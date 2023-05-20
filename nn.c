@@ -61,12 +61,12 @@ void nn_free(NN nn)
     free(nn.ws);
 }
 
-void nn_randomize(NN nn)
+void nn_randomize(NN nn, int minimum, int maximum)
 {
     for (size_t i = 0; i < nn.count; ++i)
     {
-        randomize_matrix(nn.ws[i], 0, 1);
-        randomize_matrix(nn.bs[i], 0, 1);
+        randomize_matrix(nn.ws[i], minimum, maximum);
+        randomize_matrix(nn.bs[i], minimum, maximum);
     }
 }
 

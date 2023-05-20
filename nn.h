@@ -20,7 +20,7 @@ NN nn_alloc(size_t *arch, size_t arch_count);
 void nn_print(NN nn, const char *name);
 void nn_free(NN nn);
 
-void nn_randomize(NN nn);
+void nn_randomize(NN nn, int minimum, int maximum);
 void nn_zero(NN nn);
 
 void nn_forward(NN nn);

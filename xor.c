@@ -48,7 +48,7 @@ int main(void)
     size_t arch[] = {2, 2, 1};
     NN nn = nn_alloc(arch, ARRAY_LEN(arch));
     NN gradient = nn_alloc(arch, ARRAY_LEN(arch));
-    nn_randomize(nn);
+    nn_randomize(nn, 0, 1);
 
     float rate = 1;
 

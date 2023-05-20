@@ -10,8 +10,14 @@ Image alloc_image(int width, int height)
 	result.width = width;
 	result.height = height;
 	result.color_type = PNG_COLOR_TYPE_RGBA;
-	result.bit_depth = 0;
+	result.bit_depth = 8;
 	result.row_pointers = NULL;
+
+	result.row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * result.height);
+	for (int y = 0; y < result.height; y++) 
+	{
+		result.row_pointers[y] = (png_byte*)malloc( result.width * 4 );
+	}
 
 	return result;
 }
@@ -99,7 +105,7 @@ Image read_png_file(char *filename)
 
 	result.row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * result.height);
 
-	// printf("Row bytes: %d\n", png_get_rowbytes(png, info));
+	// printf("Row bytes: %zu\n", png_get_rowbytes(png, info));
 	for (int y = 0; y < result.height; y++) 
 	{
 		result.row_pointers[y] = (png_byte*)malloc(png_get_rowbytes(png, info));
