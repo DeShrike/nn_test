@@ -3,7 +3,7 @@
 #include <time.h>
 #include "nn.h"
 
-#define BITS 4
+#define BITS 6
 
 int main()
 {
