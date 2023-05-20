@@ -38,7 +38,7 @@ void read_png_version_info()
     fprintf(stderr, "Compiled with libpng %s; using libpng %s.\n", PNG_LIBPNG_VER_STRING, png_libpng_ver);
 }
 
-Image read_png_file(char *filename)
+Image read_png_file(const char *filename)
 {
 	Image result = { 0 };
 
@@ -120,7 +120,7 @@ Image read_png_file(char *filename)
   	return result;
 }
 
-void write_png_file(char *filename, Image image)
+void write_png_file(const char *filename, Image image)
 {
 	FILE *fp = fopen(filename, "wb");
 	if (!fp) abort();

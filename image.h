@@ -13,13 +13,13 @@ typedef struct
 
 Image alloc_image(int width, int height);
 void free_image(Image image);
-Image read_png_file(char *filename);
-void write_png_file(char *filename, Image image);
+Image read_png_file(const char *filename);
+void write_png_file(const char *filename, Image image);
 
-// printf("PNG_COLOR_TYPE_GRAY: %d\n", PNG_COLOR_TYPE_GRAY);
-// printf("PNG_COLOR_TYPE_PALETTE: %d\n", PNG_COLOR_TYPE_PALETTE);
-// printf("PNG_COLOR_TYPE_RGB: %d\n", PNG_COLOR_TYPE_RGB);
-// printf("PNG_COLOR_TYPE_RGBA: %d\n", PNG_COLOR_TYPE_RGBA);
-// printf("PNG_COLOR_TYPE_GA: %d\n", PNG_COLOR_TYPE_GA);
+// printf("PNG_COLOR_TYPE_GRAY: %d\n", PNG_COLOR_TYPE_GRAY);		// 0
+// printf("PNG_COLOR_TYPE_PALETTE: %d\n", PNG_COLOR_TYPE_PALETTE);	// 3
+// printf("PNG_COLOR_TYPE_RGB: %d\n", PNG_COLOR_TYPE_RGB);			// 2
+// printf("PNG_COLOR_TYPE_RGBA: %d\n", PNG_COLOR_TYPE_RGBA);		// 6
+// printf("PNG_COLOR_TYPE_GA: %d\n", PNG_COLOR_TYPE_GA);			// 4
 
 #endif
