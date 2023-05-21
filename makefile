@@ -34,5 +34,3 @@ img_nn: img_nn.o image.o $(OBJS)
 
 clean:
 	rm *.o xor adder img_nn
-
-

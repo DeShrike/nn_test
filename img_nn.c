@@ -6,6 +6,9 @@
 #include "image.h"
 #include "nn.h"
 
+#define MAX_EPOCHS      500 * 1000
+#define LEARNING_RATE   1
+
 char *args_shift(int *argc, char ***argv)
 {
     assert(*argc > 0);
@@ -58,6 +61,9 @@ Image upscale(Image input, NN nn)
 
 Image process_color(Image image)
 {
+    bool is_color = image.color_type == PNG_COLOR_TYPE_RGB || image.color_type == PNG_COLOR_TYPE_RGBA;
+    int output_cols = is_color ? 3 : 1;
+
     Matrix t = create_matrix(image.width * image.height, 2 + 3);
     for (int y = 0; y < image.height; ++y)
     {
@@ -93,28 +99,54 @@ Image process_color(Image image)
     // MATRIX_PRINT(ti);
     // MATRIX_PRINT(to);
 
-    size_t arch[] = {2, image.width / 2, image.width / 2, 3};
+    size_t arch[] = {2, image.width / 1, image.width / 2, 3};
     NN nn = nn_alloc(arch, ARRAY_LEN(arch));
     NN gradient = nn_alloc(arch, ARRAY_LEN(arch));
     nn_randomize(nn, -1, 1);
 
     float rate = 1;
-    size_t max_epochs = 300 * 1000;
+    size_t max_epochs = 500 * 1000;
+    size_t use_stochastic_gradient_descent = 1;
+
+    size_t batch_size = image.width;
+    size_t batch_count = (t.rows + batch_size - 1) / batch_size;
 
     float c = nn_cost(nn, ti, to);
     float cc = c;
     float diff = 0;
 
-    for (size_t i = 0; i < max_epochs; ++i)
+    for (size_t epoch = 0; epoch < max_epochs; ++epoch)
     {
-        nn_backprop(nn, gradient, ti, to);
+       if (use_stochastic_gradient_descent == 1)
+        {
+            size_t batch_current = epoch % batch_count;
+            Matrix batch_ti = {
+                .rows = batch_size,
+                .cols = 2,
+                .stride = t.stride,
+                .data = &MATRIX_AT(t, batch_current * batch_size, 0),
+            };
+            Matrix batch_to = {
+                .rows = batch_size,
+                .cols = 3,
+                .stride = t.stride,
+                .data = &MATRIX_AT(t, batch_current * batch_size, batch_ti.cols),
+            };
+
+            nn_backprop(nn, gradient, batch_ti, batch_to);
+        }
+        else
+        {
+            nn_backprop(nn, gradient, ti, to);
+        }
+
         nn_learn(nn, gradient, rate);
-        if (i % 100 == 0)
+        if (epoch % 100 == 0)
         {
             c = nn_cost(nn, ti, to);
             diff = c - cc;
             cc = c;
-            printf("%zu: Cost = %f (%f)  \r", i, c, diff);
+            printf("%zu: Cost = %f (%f)  \r", epoch, c, diff);
             fflush(stdout);
             if (c < 0.001)
             {
@@ -182,25 +214,52 @@ Image process_gray(Image image)
     NN gradient = nn_alloc(arch, ARRAY_LEN(arch));
     nn_randomize(nn, -1, 1);
 
+    size_t use_stochastic_gradient_descent = 1;
     float rate = 1;
-    size_t max_epochs = 200 * 1000;
-
+    size_t max_epochs = 500 * 1000;
+    size_t batch_size = image.width;
+    size_t batch_count = (t.rows + batch_size - 1) / batch_size;
     float c = nn_cost(nn, ti, to);
     float cc = c;
     float diff = 0;
 
-    for (size_t i = 0; i < max_epochs; ++i)
+    printf("batch_count: %zu, batch_size: %zu\n", batch_count, batch_size);
+
+    for (size_t epoch = 0; epoch < max_epochs; ++epoch)
     {
-        nn_backprop(nn, gradient, ti, to);
+        if (use_stochastic_gradient_descent == 1)
+        {
+            size_t batch_current = epoch % batch_count;
+            Matrix batch_ti = {
+                .rows = batch_size,
+                .cols = 2,
+                .stride = t.stride,
+                .data = &MATRIX_AT(t, batch_current * batch_size, 0),
+            };
+            Matrix batch_to = {
+                .rows = batch_size,
+                .cols = 1,
+                .stride = t.stride,
+                .data = &MATRIX_AT(t, batch_current * batch_size, batch_ti.cols),
+            };
+
+            nn_backprop(nn, gradient, batch_ti, batch_to);
+        }
+        else
+        {
+            nn_backprop(nn, gradient, ti, to);
+        }
+
         nn_learn(nn, gradient, rate);
-        if (i % 100 == 0)
+
+        if (epoch % 100 == 0)
         {
             c = nn_cost(nn, ti, to);
             diff = c - cc;
             cc = c;
-            printf("%zu: Cost = %f (%f)  \r", i, c, diff);
+            printf("%zu: Cost = %f (%f)  \r", epoch, c, diff);
             fflush(stdout);
-            if (c < 0.005)
+            if (c < 0.001)
             {
                 break;
             }

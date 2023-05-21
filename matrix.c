@@ -139,7 +139,7 @@ void matrix_copy(Matrix dst, Matrix src)
 
 void matrix_shuffle_rows(Matrix m)
 {
-    // For stochastic-gradient descent
+    // For stochastic gradient descent
     // Fisher-Yates shuffle
     for (size_t i = 0; i < m.rows; ++i)
     {
