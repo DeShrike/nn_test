@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <errno.h>
+#include <string.h>
 #include "png.h"
 #include "image.h"
 
@@ -43,6 +45,11 @@ Image read_png_file(const char *filename)
 	Image result = { 0 };
 
 	FILE *fp = fopen(filename, "rb");
+	if (fp == NULL)
+	{
+		fprintf(stderr, "Could not open file %s: %s\n", filename, strerror(errno));
+		abort();
+	}
 
 	png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 	if (!png) abort();
@@ -123,7 +130,11 @@ Image read_png_file(const char *filename)
 void write_png_file(const char *filename, Image image)
 {
 	FILE *fp = fopen(filename, "wb");
-	if (!fp) abort();
+	if (fp == NULL)
+	{
+		fprintf(stderr, "Could not open file %s: %s\n", filename, strerror(errno));
+		abort();
+	}
 
 	png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 	if (!png) abort();

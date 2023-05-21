@@ -1,13 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <assert.h>
 #include <time.h>
 #include "image.h"
 #include "nn.h"
 
-#define MAX_EPOCHS      500 * 1000
-#define LEARNING_RATE   1
+#define MAX_EPOCHS                          1000 * 1000
+#define LEARNING_RATE                       1
+#define USE_STOCHASTIC_GRADIENT_DESCENT     true
+#define MINIMUM_COST                        0.0005
 
 char *args_shift(int *argc, char ***argv)
 {
@@ -44,7 +47,7 @@ Image upscale(Image input, NN nn)
             }
             else if (input.color_type == PNG_COLOR_TYPE_RGB || input.color_type == PNG_COLOR_TYPE_RGBA)
             {
-                out_image.color_type = PNG_COLOR_TYPE_PALETTE;
+                out_image.color_type = PNG_COLOR_TYPE_RGBA;
                 uint8_t r = MATRIX_AT(NN_OUTPUT(nn), 0, 0) * 255.f;
                 uint8_t g = MATRIX_AT(NN_OUTPUT(nn), 0, 1) * 255.f;
                 uint8_t b = MATRIX_AT(NN_OUTPUT(nn), 0, 2) * 255.f;
@@ -59,135 +62,35 @@ Image upscale(Image input, NN nn)
     return out_image;
 }
 
-Image process_color(Image image)
+Image process(Image image)
 {
     bool is_color = image.color_type == PNG_COLOR_TYPE_RGB || image.color_type == PNG_COLOR_TYPE_RGBA;
     int output_cols = is_color ? 3 : 1;
 
-    Matrix t = create_matrix(image.width * image.height, 2 + 3);
+    Matrix t = create_matrix(image.width * image.height, 2 + output_cols);
     for (int y = 0; y < image.height; ++y)
     {
         for (int x = 0; x < image.width; ++x)
         {
             size_t i = y * image.width + x;
-			uint r = image.row_pointers[y][x * 4 + 0];
-			uint g = image.row_pointers[y][x * 4 + 1];
-			uint b = image.row_pointers[y][x * 4 + 2];
-            MATRIX_AT(t, i, 0) = (float)x / (image.width - 1);
-            MATRIX_AT(t, i, 1) = (float)y / (image.height - 1);
-            MATRIX_AT(t, i, 2) = r / 255.f;
-            MATRIX_AT(t, i, 3) = g / 255.f;
-            MATRIX_AT(t, i, 4) = b / 255.f;
-        }
-    }
-
-    matrix_shuffle_rows(t);
-
-    Matrix ti = {
-        .rows = t.rows,
-        .cols = 2,
-        .stride = t.stride,
-        .data = &MATRIX_AT(t, 0, 0),
-    };
-    Matrix to = {
-        .rows = t.rows,
-        .cols = 3,
-        .stride = t.stride,
-        .data = &MATRIX_AT(t, 0, ti.cols),
-    };
-
-    // MATRIX_PRINT(ti);
-    // MATRIX_PRINT(to);
-
-    size_t arch[] = {2, image.width / 1, image.width / 2, 3};
-    NN nn = nn_alloc(arch, ARRAY_LEN(arch));
-    NN gradient = nn_alloc(arch, ARRAY_LEN(arch));
-    nn_randomize(nn, -1, 1);
-
-    float rate = 1;
-    size_t max_epochs = 500 * 1000;
-    size_t use_stochastic_gradient_descent = 1;
-
-    size_t batch_size = image.width;
-    size_t batch_count = (t.rows + batch_size - 1) / batch_size;
-
-    float c = nn_cost(nn, ti, to);
-    float cc = c;
-    float diff = 0;
-
-    for (size_t epoch = 0; epoch < max_epochs; ++epoch)
-    {
-       if (use_stochastic_gradient_descent == 1)
-        {
-            size_t batch_current = epoch % batch_count;
-            Matrix batch_ti = {
-                .rows = batch_size,
-                .cols = 2,
-                .stride = t.stride,
-                .data = &MATRIX_AT(t, batch_current * batch_size, 0),
-            };
-            Matrix batch_to = {
-                .rows = batch_size,
-                .cols = 3,
-                .stride = t.stride,
-                .data = &MATRIX_AT(t, batch_current * batch_size, batch_ti.cols),
-            };
-
-            nn_backprop(nn, gradient, batch_ti, batch_to);
-        }
-        else
-        {
-            nn_backprop(nn, gradient, ti, to);
-        }
-
-        nn_learn(nn, gradient, rate);
-        if (epoch % 100 == 0)
-        {
-            c = nn_cost(nn, ti, to);
-            diff = c - cc;
-            cc = c;
-            printf("%zu: Cost = %f (%f)  \r", epoch, c, diff);
-            fflush(stdout);
-            if (c < 0.001)
+            if (is_color)
             {
-                break;
+                uint r = image.row_pointers[y][x * 4 + 0];
+                uint g = image.row_pointers[y][x * 4 + 1];
+                uint b = image.row_pointers[y][x * 4 + 2];
+                MATRIX_AT(t, i, 0) = (float)x / (image.width - 1);
+                MATRIX_AT(t, i, 1) = (float)y / (image.height - 1);
+                MATRIX_AT(t, i, 2) = r / 255.f;
+                MATRIX_AT(t, i, 3) = g / 255.f;
+                MATRIX_AT(t, i, 4) = b / 255.f;
             }
-        }
-    }
-
-    printf("\n");
-
-    Image out_image = upscale(image, nn);
-
-    return out_image;
-}
-
-Image process_gray(Image image)
-{
-    if (image.width <= 28)
-    {
-        for (int y = 0; y < image.height; ++y)
-        {
-            for (int x = 0; x < image.width; ++x)
+            else
             {
                 uint pixel = image.row_pointers[y][x * 4];
-                printf("%3u ", pixel);
+                MATRIX_AT(t, i, 0) = (float)x / (image.width - 1);
+                MATRIX_AT(t, i, 1) = (float)y / (image.height - 1);
+                MATRIX_AT(t, i, 2) = pixel / 255.f;
             }
-
-            printf("\n");
-        }
-    }
-
-    Matrix t = create_matrix(image.width * image.height, 2 + 1);
-    for (int y = 0; y < image.height; ++y)
-    {
-        for (int x = 0; x < image.width; ++x)
-        {
-            size_t i = y * image.width + x;
-			uint pixel = image.row_pointers[y][x * 4];
-            MATRIX_AT(t, i, 0) = (float)x / (image.width - 1);
-            MATRIX_AT(t, i, 1) = (float)y / (image.height - 1);
-            MATRIX_AT(t, i, 2) = pixel / 255.f;
         }
     }
 
@@ -201,7 +104,7 @@ Image process_gray(Image image)
     };
     Matrix to = {
         .rows = t.rows,
-        .cols = 1,
+        .cols = output_cols,
         .stride = t.stride,
         .data = &MATRIX_AT(t, 0, ti.cols),
     };
@@ -209,25 +112,25 @@ Image process_gray(Image image)
     // MATRIX_PRINT(ti);
     // MATRIX_PRINT(to);
 
-    size_t arch[] = {2, image.width / 2, image.width / 4, 1};
+    size_t arch[] = { 2, image.width / 1, image.width / 1, output_cols };
     NN nn = nn_alloc(arch, ARRAY_LEN(arch));
     NN gradient = nn_alloc(arch, ARRAY_LEN(arch));
     nn_randomize(nn, -1, 1);
 
-    size_t use_stochastic_gradient_descent = 1;
     float rate = 1;
-    size_t max_epochs = 500 * 1000;
+    size_t max_epochs = MAX_EPOCHS;
+    bool use_stochastic_gradient_descent = USE_STOCHASTIC_GRADIENT_DESCENT;
+
     size_t batch_size = image.width;
     size_t batch_count = (t.rows + batch_size - 1) / batch_size;
+
     float c = nn_cost(nn, ti, to);
     float cc = c;
     float diff = 0;
 
-    printf("batch_count: %zu, batch_size: %zu\n", batch_count, batch_size);
-
     for (size_t epoch = 0; epoch < max_epochs; ++epoch)
     {
-        if (use_stochastic_gradient_descent == 1)
+        if (use_stochastic_gradient_descent)
         {
             size_t batch_current = epoch % batch_count;
             Matrix batch_ti = {
@@ -238,7 +141,7 @@ Image process_gray(Image image)
             };
             Matrix batch_to = {
                 .rows = batch_size,
-                .cols = 1,
+                .cols = output_cols,
                 .stride = t.stride,
                 .data = &MATRIX_AT(t, batch_current * batch_size, batch_ti.cols),
             };
@@ -251,7 +154,6 @@ Image process_gray(Image image)
         }
 
         nn_learn(nn, gradient, rate);
-
         if (epoch % 100 == 0)
         {
             c = nn_cost(nn, ti, to);
@@ -259,7 +161,7 @@ Image process_gray(Image image)
             cc = c;
             printf("%zu: Cost = %f (%f)  \r", epoch, c, diff);
             fflush(stdout);
-            if (c < 0.001)
+            if (c < MINIMUM_COST)
             {
                 break;
             }
@@ -297,8 +199,8 @@ int main(int argc, char **argv)
 
     printf("Reading %s\n", input_file_path);
 	Image i = read_png_file(input_file_path);
+    printf("Dimensions: %d x %d\n", i.width, i.height);
 
-    // printf("Dimensions: %d x %d\n", i.width, i.height);
     // printf("Color Type: %d\n", i.color_type);
     // printf("Bit Depth: %d\n", i.bit_depth);
 
@@ -308,20 +210,10 @@ int main(int argc, char **argv)
 		abort();
 	}
 
-	if (i.color_type == PNG_COLOR_TYPE_PALETTE)  
-	{
-    	Image o = process_gray(i);
-        printf("Saving %s\n", output_file_path);
-        write_png_file(output_file_path, o);
-        free_image(o);
-	}
-    else if (i.color_type == PNG_COLOR_TYPE_RGB || i.color_type == PNG_COLOR_TYPE_RGBA)
-    {
-    	Image o = process_color(i);
-        printf("Saving %s\n", output_file_path);
-        write_png_file(output_file_path, o);
-        free_image(o);
-    }
+    Image o = process(i);
+    printf("Saving %s\n", output_file_path);
+    write_png_file(output_file_path, o);
+    free_image(o);
 
 	free_image(i);
 	return 0;	
