@@ -146,7 +146,7 @@ void matrix_shuffle_rows(Matrix m)
         size_t j = i + rand() % (m.rows - i);
         if (i != j)
         {
-            for (size_t k = 0; j < m.cols; ++k)
+            for (size_t k = 0; k < m.cols; ++k)
             {
                 float t = MATRIX_AT(m, i, k);
                 MATRIX_AT(m, i, k) = MATRIX_AT(m, j, k);

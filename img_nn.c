@@ -10,7 +10,7 @@
 #define MAX_EPOCHS                          1000 * 1000
 #define LEARNING_RATE                       1
 #define USE_STOCHASTIC_GRADIENT_DESCENT     true
-#define MINIMUM_COST                        0.001
+#define MINIMUM_COST                        0.005
 
 char *args_shift(int *argc, char ***argv)
 {
@@ -64,7 +64,7 @@ Image upscale(Image input, NN nn)
 
 Image process(Image image)
 {
-    bool is_color = image.color_type == PNG_COLOR_TYPE_RGB || image.color_type == PNG_COLOR_TYPE_RGBA;
+    bool is_color = (image.color_type == PNG_COLOR_TYPE_RGB) || (image.color_type == PNG_COLOR_TYPE_RGBA);
     int output_cols = is_color ? 3 : 1;
 
     Matrix t = create_matrix(image.width * image.height, 2 + output_cols);
@@ -110,7 +110,7 @@ Image process(Image image)
     // MATRIX_PRINT(ti);
     // MATRIX_PRINT(to);
 
-    size_t arch[] = { 2, image.width / 2, image.width / 2, output_cols };
+    size_t arch[] = { 2, image.width / 1, image.width / 2, output_cols };
     NN nn = nn_alloc(arch, ARRAY_LEN(arch));
     NN gradient = nn_alloc(arch, ARRAY_LEN(arch));
     nn_randomize(nn, -1, 1);
@@ -119,18 +119,43 @@ Image process(Image image)
     size_t max_epochs = MAX_EPOCHS;
     bool use_stochastic_gradient_descent = USE_STOCHASTIC_GRADIENT_DESCENT;
 
-    size_t batch_size = image.width * 2;
-    size_t batch_count = (t.rows + batch_size - 1) / batch_size;
+    float cost = nn_cost(nn, ti, to);
+    float prev_cost = cost;
+    float cost_diff = 0;
 
-    float c = nn_cost(nn, ti, to);
-    float cc = c;
-    float diff = 0;
-
-    for (size_t epoch = 0; epoch < max_epochs; ++epoch)
+    if (use_stochastic_gradient_descent == false)
     {
-        if (use_stochastic_gradient_descent)
+        matrix_shuffle_rows(t);
+        for (size_t epoch = 0; epoch < max_epochs; ++epoch)
         {
-            size_t batch_current = epoch % batch_count;
+            nn_backprop(nn, gradient, ti, to);
+            nn_learn(nn, gradient, rate);
+
+            if (epoch % 100 == 0)
+            {
+                cost = nn_cost(nn, ti, to);
+                cost_diff = cost - prev_cost;
+                prev_cost = cost;
+                printf("%zu: Cost = %f (%f)  \r", epoch, cost, cost_diff);
+                fflush(stdout);
+                if (cost < MINIMUM_COST)
+                {
+                    break;
+                }
+            }
+        }
+    }
+    else
+    {
+        size_t batch_size = image.width;
+        size_t batch_count = (t.rows + batch_size - 1) / batch_size;
+
+        printf("Batch Count: %zu - Batch Size: %zu\n", batch_count, batch_size);
+
+        cost = 0.0f;
+        size_t batch_current = 0;
+        for (size_t epoch = 0; epoch < max_epochs; ++epoch)
+        {
             Matrix batch_ti = {
                 .rows = batch_size,
                 .cols = 2,
@@ -145,27 +170,32 @@ Image process(Image image)
             };
 
             nn_backprop(nn, gradient, batch_ti, batch_to);
-            // if (batch_current == batch_count - 1)
-            // {
-            //     matrix_shuffle_rows(t);
-            // }
-        }
-        else
-        {
-            nn_backprop(nn, gradient, ti, to);
-        }
+            nn_learn(nn, gradient, rate);
 
-        nn_learn(nn, gradient, rate);
-        if (epoch % 100 == 0)
-        {
-            c = nn_cost(nn, ti, to);
-            diff = c - cc;
-            cc = c;
-            printf("%zu: Cost = %f (%f)  \r", epoch, c, diff);
-            fflush(stdout);
-            if (c < MINIMUM_COST)
+            cost += nn_cost(nn, batch_ti, batch_to);
+            if (batch_current == batch_count - 1)
             {
-                break;
+                cost = cost / batch_count;
+
+                if (epoch % (batch_count * 5 - 1) == 0)
+                {
+                    cost_diff = cost - prev_cost;
+                    prev_cost = cost;
+                    printf("%zu: Cost = %f (%f)  \r", epoch, cost, cost_diff);
+                    fflush(stdout);
+                    if (cost < MINIMUM_COST)
+                    {
+                        break;
+                    }
+                }
+
+                cost = 0.0f;
+                batch_current = 0;
+                matrix_shuffle_rows(t);
+            }
+            else
+            {
+                batch_current += 1;
             }
         }
     }
