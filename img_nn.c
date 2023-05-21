@@ -10,7 +10,7 @@
 #define MAX_EPOCHS                          1000 * 1000
 #define LEARNING_RATE                       1
 #define USE_STOCHASTIC_GRADIENT_DESCENT     true
-#define MINIMUM_COST                        0.0005
+#define MINIMUM_COST                        0.001
 
 char *args_shift(int *argc, char ***argv)
 {
@@ -94,8 +94,6 @@ Image process(Image image)
         }
     }
 
-    matrix_shuffle_rows(t);
-
     Matrix ti = {
         .rows = t.rows,
         .cols = 2,
@@ -112,7 +110,7 @@ Image process(Image image)
     // MATRIX_PRINT(ti);
     // MATRIX_PRINT(to);
 
-    size_t arch[] = { 2, image.width / 1, image.width / 1, output_cols };
+    size_t arch[] = { 2, image.width / 2, image.width / 2, output_cols };
     NN nn = nn_alloc(arch, ARRAY_LEN(arch));
     NN gradient = nn_alloc(arch, ARRAY_LEN(arch));
     nn_randomize(nn, -1, 1);
@@ -121,7 +119,7 @@ Image process(Image image)
     size_t max_epochs = MAX_EPOCHS;
     bool use_stochastic_gradient_descent = USE_STOCHASTIC_GRADIENT_DESCENT;
 
-    size_t batch_size = image.width;
+    size_t batch_size = image.width * 2;
     size_t batch_count = (t.rows + batch_size - 1) / batch_size;
 
     float c = nn_cost(nn, ti, to);
@@ -147,6 +145,10 @@ Image process(Image image)
             };
 
             nn_backprop(nn, gradient, batch_ti, batch_to);
+            // if (batch_current == batch_count - 1)
+            // {
+            //     matrix_shuffle_rows(t);
+            // }
         }
         else
         {
@@ -207,10 +209,12 @@ int main(int argc, char **argv)
 	if (i.bit_depth != 8)
 	{
 		fprintf(stderr, "Only 8 bit images are supported\n");
+    	free_image(i);
 		abort();
 	}
 
     Image o = process(i);
+    
     printf("Saving %s\n", output_file_path);
     write_png_file(output_file_path, o);
     free_image(o);

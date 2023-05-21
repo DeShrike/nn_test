@@ -4,16 +4,19 @@
 
 Simple network that can XOR 2 bits.
 
+---
+
 ## adder
 
 Simple network that can add two 4 bit numbers.
+
+---
 
 ## img_nn
 
 Network that can _learn_ an image and generated an upscaled version.
 
 ### Examples
-
 
 <img src="inputs/0.png" width="140"> -> <img src="outputs/0.png" width="140">
 
@@ -35,7 +38,7 @@ Network that can _learn_ an image and generated an upscaled version.
 
 <img src="inputs/9.png" width="140"> -> <img src="outputs/9.png" width="140">
 
-<img src="inputs/wink.png" width="140"> -> <img src="outputs/wink.png" width="140"> 
+<img src="inputs/wink.png" width="140"> -> <img src="outputs/wink.png" width="140">
 
 <img src="inputs/hi.png" width="140"> -> <img src="outputs/hi.png" width="140">
 
@@ -55,4 +58,14 @@ Network that can _learn_ an image and generated an upscaled version.
 
 <img src="inputs/circles.png" width="140"> -> <img src="outputs/circles.png" width="140">
 
+<img src="inputs/gradient.png" width="140"> -> <img src="outputs/gradient.png" width="140">
+
+<img src="inputs/imgnn.png" width="140"> -> <img src="outputs/imgnn.png" width="140">
+
+<img src="inputs/boy.png" width="140"> -> <img src="outputs/boy.png" width="140">
+
+<img src="inputs/mc.png" width="140"> -> <img src="outputs/mc.png" width="140">
+
 (input images shown here were resized for clarity)
+
+Code adapted from Tsoding on Twitch.

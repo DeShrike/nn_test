@@ -10,6 +10,6 @@
 ./img_nn inputs/7.png outputs/7.png
 ./img_nn inputs/8.png outputs/8.png
 ./img_nn inputs/9.png outputs/9.png
-./img_nn inputs/wink.png outputs/wink0.png
+./img_nn inputs/wink.png outputs/wink.png
 ./img_nn inputs/hi.png outputs/hi.png
 ./img_nn inputs/help.png outputs/help.png
